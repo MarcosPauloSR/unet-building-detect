@@ -5,6 +5,9 @@ import torch
 from torchvision import transforms
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
 
 image_transform = transforms.Compose([
     transforms.Resize((256, 256)),
@@ -46,16 +49,13 @@ class SegmentationDataset(Dataset):
 
         return image, mask
 
-dataset = SegmentationDataset(images_dir='train/images/',
-                              masks_dir='train/masks/',
+dataset = SegmentationDataset(images_dir='train/images_old/',
+                              masks_dir='train/masks_old/',
                               image_transform=image_transform,
                               mask_transform=mask_transform)
 
 dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
 
-
-import torch
-import torch.nn as nn
 
 class UNet(nn.Module):
     def __init__(self, in_channels=3, out_channels=1):
@@ -170,78 +170,4 @@ model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 criterion = nn.BCEWithLogitsLoss()
 
-num_epochs = 25
-
-# Loop de treinamento simplificado
-for epoch in range(num_epochs):
-    model.train()
-    for images, masks in dataloader:
-        images = images.to(device)
-        masks = masks.to(device)
-
-        outputs = model(images)
-        loss = criterion(outputs, masks)
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-    print(f'Época [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
-
-import matplotlib.pyplot as plt
-
-model.eval()
-with torch.no_grad():
-    images, masks = next(iter(dataloader))
-    images = images.to(device)
-    outputs = model(images)
-    probs = torch.sigmoid(outputs)
-    preds = (probs > 0.5).float()
-
-torch.save(model.state_dict(), 'unet_model.pth')
-
-# Converter tensores para CPU e numpy
-# images = images.cpu().numpy()
-# masks = masks.cpu().numpy()
-# preds = preds.cpu().numpy()
-
-# Função de denormalização
-def denormalize(image_tensor):
-    mean = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1).to(image_tensor.device)
-    std = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1).to(image_tensor.device)
-    image_tensor = image_tensor * std + mean
-    return image_tensor
-
-
-# Denormalizar imagens enquanto ainda são tensores PyTorch
-images_denorm = denormalize(images)
-
-# Converter tensores para CPU e então para NumPy
-images_np = images_denorm.permute(0, 2, 3, 1).cpu().numpy()
-masks_np = masks.cpu().numpy()
-preds_np = preds.cpu().numpy()
-
-# Plotar as imagens, máscaras verdadeiras e predições
-for i in range(len(images_np)):
-    plt.figure(figsize=(12, 4))
-    
-    # Imagem Original
-    plt.subplot(1, 3, 1)
-    plt.imshow(np.clip(images_np[i], 0, 1))
-    plt.title('Imagem Original')
-    plt.axis('off')
-    
-    # Máscara Verdadeira
-    plt.subplot(1, 3, 2)
-    plt.imshow(masks_np[i][0], cmap='gray')
-    plt.title('Máscara Verdadeira')
-    plt.axis('off')
-    
-    # Predição da Máscara
-    plt.subplot(1, 3, 3)
-    plt.imshow(preds_np[i][0], cmap='gray')
-    plt.title('Predição da Máscara')
-    plt.axis('off')
-    
-    plt.show()
-
+__all__ = ['dataloader', 'model', 'criterion', 'optimizer', 'device']

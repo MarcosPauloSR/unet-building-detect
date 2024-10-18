@@ -32,7 +32,7 @@ model = UNet(in_channels=3, out_channels=1)
 model = model.to(device)
 
 # Carregamento dos pesos
-model.load_state_dict(torch.load('unet_model.pth', map_location=device))
+model.load_state_dict(torch.load('buildings.pth', map_location=device))
 
 # Definir o modelo em modo de avaliação
 model.eval()
@@ -51,6 +51,7 @@ def predict_image(image_path):
     
     return predicted_mask.cpu().squeeze(0)  # Remove a dimensão do batch
 
+# Função de denormalização
 def denormalize(image_tensor):
     mean = torch.tensor([0.485, 0.456, 0.406]).view(3,1,1)
     std = torch.tensor([0.229, 0.224, 0.225]).view(3,1,1)
@@ -59,7 +60,7 @@ def denormalize(image_tensor):
     image = image.clamp(0, 1)
     return image
 
-def visualize_prediction(image_path):
+def visualize_prediction(image_path, title):
     # Carrega e pré-processa a imagem
     image = load_image(image_path)
     image_denorm = denormalize(image.squeeze(0))
@@ -73,7 +74,7 @@ def visualize_prediction(image_path):
     plt.figure(figsize=(12, 6))
     plt.subplot(1, 2, 1)
     plt.imshow(image_np)
-    plt.title('Imagem Original')
+    plt.title(title)
     plt.axis('off')
     
     plt.subplot(1, 2, 2)
@@ -92,16 +93,10 @@ def save_predicted_mask(image_path, save_path):
 # Diretório das imagens
 image_directory = './val/images/'
 
-# Listar as imagens disponíveis
+# Verifica Imagens Disponíveis no diretório
 available_images = [f for f in os.listdir(image_directory) if os.path.isfile(os.path.join(image_directory, f))]
-print("Imagens disponíveis na pasta './val/images/':")
-for img in available_images:
-    print(img)
 
-# Verificar se 'ifgoiano.png' está na lista
-if 'ifgoiano.png' in available_images:
-    image_path = os.path.join(image_directory, 'ifgoiano.png')
-    visualize_prediction(image_path)
-    save_predicted_mask(image_path, 'mascara_predita.png')
-else:
-    print("A imagem 'ifgoiano.png' não foi encontrada na pasta './val/images/'. Por favor, verifique o nome do arquivo e sua extensão.")
+for img in available_images:
+    image_path = os.path.join(image_directory, img)
+    visualize_prediction(image_path, img)
+    save_predicted_mask(image_path, f'./val/masks/mask_{img}')
