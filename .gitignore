@@ -7,7 +7,5 @@ train/images/
 train/images_old/
 train/masks/
 train/masks_old/
-inverterCores.py
 loss.txt
-inverterCores.py
 buildings.pth
