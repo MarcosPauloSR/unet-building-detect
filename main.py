@@ -11,7 +11,7 @@ import torch.nn as nn
 
 image_transform = transforms.Compose([
     transforms.Resize((256, 256)),
-    transforms.Grayscale(num_output_channels=3),
+    # transforms.Grayscale(num_output_channels=3),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406],
                          std=[0.229, 0.224, 0.225])
@@ -75,17 +75,10 @@ class UNet(nn.Module):
         self.enc4 = self.double_conv(256, 512)
         self.pool4 = nn.MaxPool2d(2)
 
-        # Nova camada no encoder
-        self.enc5 = self.double_conv(512, 1024)
-        self.pool5 = nn.MaxPool2d(2)
-
-        # Bottleneck ajustado
-        self.bottom = self.double_conv(1024, 2048)
+        # Bottleneck
+        self.bottom = self.double_conv(512, 1024)
 
         # Decoder
-        self.upconv5 = self.up_conv(2048, 1024)
-        self.dec5 = self.double_conv(2048, 1024)
-
         self.upconv4 = self.up_conv(1024, 512)
         self.dec4 = self.double_conv(1024, 512)
 
@@ -130,36 +123,28 @@ class UNet(nn.Module):
         x4 = self.enc4(x3p)    # [N, 512, H/8, W/8]
         x4p = self.pool4(x4)   # [N, 512, H/16, W/16]
 
-        # Nova camada no encoder
-        x5 = self.enc5(x4p)    # [N, 1024, H/16, W/16]
-        x5p = self.pool5(x5)   # [N, 1024, H/32, W/32]
-
-        # Bottleneck ajustado
-        x6 = self.bottom(x5p)  # [N, 2048, H/32, W/32]
+        # Bottleneck
+        x5 = self.bottom(x4p)  # [N, 1024, H/16, W/16]
 
         # Decoder
-        x7 = self.upconv5(x6)  # [N, 1024, H/16, W/16]
-        x7 = torch.cat([x7, x5], dim=1)  # [N, 2048, H/16, W/16]
-        x7 = self.dec5(x7)     # [N, 1024, H/16, W/16]
+        x6 = self.upconv4(x5)  # [N, 512, H/8, W/8]
+        x6 = torch.cat([x6, x4], dim=1)  # [N, 1024, H/8, W/8]
+        x6 = self.dec4(x6)     # [N, 512, H/8, W/8]
 
-        x8 = self.upconv4(x7)  # [N, 512, H/8, W/8]
-        x8 = torch.cat([x8, x4], dim=1)  # [N, 1024, H/8, W/8]
-        x8 = self.dec4(x8)     # [N, 512, H/8, W/8]
+        x7 = self.upconv3(x6)  # [N, 256, H/4, W/4]
+        x7 = torch.cat([x7, x3], dim=1)  # [N, 512, H/4, W/4]
+        x7 = self.dec3(x7)     # [N, 256, H/4, W/4]
 
-        x9 = self.upconv3(x8)  # [N, 256, H/4, W/4]
-        x9 = torch.cat([x9, x3], dim=1)  # [N, 512, H/4, W/4]
-        x9 = self.dec3(x9)     # [N, 256, H/4, W/4]
+        x8 = self.upconv2(x7)  # [N, 128, H/2, W/2]
+        x8 = torch.cat([x8, x2], dim=1)  # [N, 256, H/2, W/2]
+        x8 = self.dec2(x8)     # [N, 128, H/2, W/2]
 
-        x10 = self.upconv2(x9)  # [N, 128, H/2, W/2]
-        x10 = torch.cat([x10, x2], dim=1)  # [N, 256, H/2, W/2]
-        x10 = self.dec2(x10)     # [N, 128, H/2, W/2]
-
-        x11 = self.upconv1(x10)  # [N, 64, H, W]
-        x11 = torch.cat([x11, x1], dim=1)  # [N, 128, H, W]
-        x11 = self.dec1(x11)     # [N, 64, H, W]
+        x9 = self.upconv1(x8)  # [N, 64, H, W]
+        x9 = torch.cat([x9, x1], dim=1)  # [N, 128, H, W]
+        x9 = self.dec1(x9)     # [N, 64, H, W]
 
         # Saída
-        output = self.final_conv(x11)  # [N, out_channels, H, W]
+        output = self.final_conv(x9)  # [N, out_channels, H, W]
         return output
     
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

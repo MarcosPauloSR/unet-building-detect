@@ -50,7 +50,7 @@ model = UNet(in_channels=3, out_channels=1)
 model = model.to(device)
 
 # Carregamento dos pesos
-model.load_state_dict(torch.load('buildings_5Camadas.pth', map_location=device))
+model.load_state_dict(torch.load('buildings.pth', map_location=device))
 
 # Definir o modelo em modo de avaliação
 model.eval()
@@ -118,9 +118,9 @@ def visualize_prediction(image_path, mask_path, title):
     precision = calculate_precision(predicted_mask, ground_truth_mask)
     recall = calculate_recall(predicted_mask, ground_truth_mask)
     
-    log_to_file('log_5Camadas.txt', f'Coeficiente de Dice para {title}: {dice_score:.4f}')
-    log_to_file('log_5Camadas.txt', f'Precisão para {title}: {precision:.4f}')
-    log_to_file('log_5Camadas.txt', f'Recall para {title}: {recall:.4f}')
+    log_to_file('log_4Camadas.txt', f'Coeficiente de Dice para {title}: {dice_score:.4f}')
+    log_to_file('log_4Camadas.txt', f'Precisão para {title}: {precision:.4f}')
+    log_to_file('log_4Camadas.txt', f'Recall para {title}: {recall:.4f}')
     
     # Plotagem
     plt.figure(figsize=(18, 6))
@@ -159,4 +159,4 @@ for img in available_images:
     image_path = os.path.join(image_directory, img)
     mask_path = os.path.join(mask_directory, img)
     visualize_prediction(image_path, mask_path, img)
-    save_predicted_mask(image_path, f'./val/masks/5_camadas/mask_{img}')
+    save_predicted_mask(image_path, f'./val/masks/mask_{img}')
