@@ -58,9 +58,6 @@ dataset = SegmentationDataset(images_dir='train/images_old/',
 dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
 
 
-import torch
-import torch.nn as nn
-
 class UNet(nn.Module):
     def __init__(self, in_channels=3, out_channels=1):
         super(UNet, self).__init__()
@@ -78,19 +75,14 @@ class UNet(nn.Module):
         self.enc4 = self.double_conv(256, 512)
         self.pool4 = nn.MaxPool2d(2)
 
+        # Nova camada no encoder
         self.enc5 = self.double_conv(512, 1024)
         self.pool5 = nn.MaxPool2d(2)
 
-        self.enc6 = self.double_conv(1024, 2048)
-        self.pool6 = nn.MaxPool2d(2)
-
-        # Bottleneck
-        self.bottom = self.double_conv(2048, 4096)
+        # Bottleneck ajustado
+        self.bottom = self.double_conv(1024, 2048)
 
         # Decoder
-        self.upconv6 = self.up_conv(4096, 2048)
-        self.dec6 = self.double_conv(4096, 2048)
-
         self.upconv5 = self.up_conv(2048, 1024)
         self.dec5 = self.double_conv(2048, 1024)
 
@@ -126,56 +118,49 @@ class UNet(nn.Module):
 
     def forward(self, x):
         # Encoder
-        x1 = self.enc1(x)       # [N, 64, H, W]
-        x1p = self.pool1(x1)    # [N, 64, H/2, W/2]
+        x1 = self.enc1(x)      # [N, 64, H, W]
+        x1p = self.pool1(x1)   # [N, 64, H/2, W/2]
 
-        x2 = self.enc2(x1p)     # [N, 128, H/2, W/2]
-        x2p = self.pool2(x2)    # [N, 128, H/4, W/4]
+        x2 = self.enc2(x1p)    # [N, 128, H/2, W/2]
+        x2p = self.pool2(x2)   # [N, 128, H/4, W/4]
 
-        x3 = self.enc3(x2p)     # [N, 256, H/4, W/4]
-        x3p = self.pool3(x3)    # [N, 256, H/8, W/8]
+        x3 = self.enc3(x2p)    # [N, 256, H/4, W/4]
+        x3p = self.pool3(x3)   # [N, 256, H/8, W/8]
 
-        x4 = self.enc4(x3p)     # [N, 512, H/8, W/8]
-        x4p = self.pool4(x4)    # [N, 512, H/16, W/16]
+        x4 = self.enc4(x3p)    # [N, 512, H/8, W/8]
+        x4p = self.pool4(x4)   # [N, 512, H/16, W/16]
 
-        x5 = self.enc5(x4p)     # [N, 1024, H/16, W/16]
-        x5p = self.pool5(x5)    # [N, 1024, H/32, W/32]
+        # Nova camada no encoder
+        x5 = self.enc5(x4p)    # [N, 1024, H/16, W/16]
+        x5p = self.pool5(x5)   # [N, 1024, H/32, W/32]
 
-        x6 = self.enc6(x5p)     # [N, 2048, H/32, W/32]
-        x6p = self.pool6(x6)    # [N, 2048, H/64, W/64]
-
-        # Bottleneck
-        x7 = self.bottom(x6p)   # [N, 4096, H/64, W/64]
+        # Bottleneck ajustado
+        x6 = self.bottom(x5p)  # [N, 2048, H/32, W/32]
 
         # Decoder
-        x8 = self.upconv6(x7)   # [N, 2048, H/32, W/32]
-        x8 = torch.cat([x8, x6], dim=1)  # [N, 4096, H/32, W/32]
-        x8 = self.dec6(x8)      # [N, 2048, H/32, W/32]
+        x7 = self.upconv5(x6)  # [N, 1024, H/16, W/16]
+        x7 = torch.cat([x7, x5], dim=1)  # [N, 2048, H/16, W/16]
+        x7 = self.dec5(x7)     # [N, 1024, H/16, W/16]
 
-        x9 = self.upconv5(x8)   # [N, 1024, H/16, W/16]
-        x9 = torch.cat([x9, x5], dim=1)  # [N, 2048, H/16, W/16]
-        x9 = self.dec5(x9)      # [N, 1024, H/16, W/16]
+        x8 = self.upconv4(x7)  # [N, 512, H/8, W/8]
+        x8 = torch.cat([x8, x4], dim=1)  # [N, 1024, H/8, W/8]
+        x8 = self.dec4(x8)     # [N, 512, H/8, W/8]
 
-        x10 = self.upconv4(x9)  # [N, 512, H/8, W/8]
-        x10 = torch.cat([x10, x4], dim=1)  # [N, 1024, H/8, W/8]
-        x10 = self.dec4(x10)    # [N, 512, H/8, W/8]
+        x9 = self.upconv3(x8)  # [N, 256, H/4, W/4]
+        x9 = torch.cat([x9, x3], dim=1)  # [N, 512, H/4, W/4]
+        x9 = self.dec3(x9)     # [N, 256, H/4, W/4]
 
-        x11 = self.upconv3(x10) # [N, 256, H/4, W/4]
-        x11 = torch.cat([x11, x3], dim=1)  # [N, 512, H/4, W/4]
-        x11 = self.dec3(x11)    # [N, 256, H/4, W/4]
+        x10 = self.upconv2(x9)  # [N, 128, H/2, W/2]
+        x10 = torch.cat([x10, x2], dim=1)  # [N, 256, H/2, W/2]
+        x10 = self.dec2(x10)     # [N, 128, H/2, W/2]
 
-        x12 = self.upconv2(x11) # [N, 128, H/2, W/2]
-        x12 = torch.cat([x12, x2], dim=1)  # [N, 256, H/2, W/2]
-        x12 = self.dec2(x12)    # [N, 128, H/2, W/2]
-
-        x13 = self.upconv1(x12) # [N, 64, H, W]
-        x13 = torch.cat([x13, x1], dim=1)  # [N, 128, H, W]
-        x13 = self.dec1(x13)    # [N, 64, H, W]
+        x11 = self.upconv1(x10)  # [N, 64, H, W]
+        x11 = torch.cat([x11, x1], dim=1)  # [N, 128, H, W]
+        x11 = self.dec1(x11)     # [N, 64, H, W]
 
         # Saída
-        output = self.final_conv(x13)  # [N, out_channels, H, W]
+        output = self.final_conv(x11)  # [N, out_channels, H, W]
         return output
-
     
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
